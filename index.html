@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS Dashboards — insightsoftware Customer Organization</title>
+<style>
+:root {
+  --navy:   #1C3054;
+  --navy2:  #243b6b;
+  --orange: #E85D26;
+  --bg:     #EEF1F7;
+  --card:   #FFFFFF;
+  --border: #DDE2EC;
+  --text:   #1A1A2E;
+  --sub:    #5A6070;
+  --r:      10px;
+  --shadow: 0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+}
+.hdr {
+  background: linear-gradient(135deg, #162544, var(--navy) 60%, var(--navy2));
+  color: #fff; padding: 32px 40px;
+  border-bottom: 3px solid var(--orange);
+  box-shadow: 0 2px 16px rgba(0,0,0,.2);
+}
+.hdr-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase;
+               letter-spacing: 1.2px; color: #f07040; margin-bottom: 8px; }
+.hdr h1 { font-size: 28px; font-weight: 800; letter-spacing: -.4px; }
+.hdr p  { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 6px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+.section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--sub); margin: 28px 0 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.dash-card {
+  background: var(--card); border-radius: var(--r); border: 1px solid var(--border);
+  overflow: hidden; box-shadow: var(--shadow); text-decoration: none; color: var(--text);
+  display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s;
+}
+.dash-card:hover { transform: translateY(-3px); box-shadow: 0 6px 24px rgba(0,0,0,.1); }
+.dash-card-accent { height: 4px; }
+.ac-maestro { background: linear-gradient(90deg, var(--navy), var(--orange)); }
+.ac-placeholder { background: var(--border); }
+.dash-card-body { padding: 18px 20px; flex: 1; }
+.dash-card-program { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                     letter-spacing: .8px; color: var(--sub); margin-bottom: 6px; }
+.dash-card-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+.dash-card-desc  { font-size: 12px; color: var(--sub); line-height: 1.6; }
+.dash-card-footer {
+  padding: 12px 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  background: #FAFBFD;
+}
+.dash-card-meta { font-size: 11px; color: var(--sub); }
+.dash-card-badge {
+  font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.badge-live { background: #E8F5E9; color: #2E7D32; }
+.badge-coming { background: #F3F4F6; color: #6B7280; }
+.add-card {
+  background: transparent; border: 2px dashed var(--border); border-radius: var(--r);
+  padding: 28px 20px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; color: var(--sub); font-size: 12px; text-align: center;
+  min-height: 140px;
+}
+.add-icon { font-size: 24px; }
+.ftr {
+  text-align: center; font-size: 11px; color: var(--sub);
+  padding: 20px; border-top: 1px solid var(--border); background: var(--card);
+  margin-top: 40px;
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-eyebrow">insightsoftware · Customer Organization</div>
+  <h1>CS Dashboards</h1>
+  <p>Program metrics, OKR tracking, and operational reporting for the Customer Organization &nbsp;·&nbsp; Owner: Heather Wurtz</p>
+</div>
+
+<div class="wrap">
+
+  <div class="section-title">Active Programs</div>
+  <div class="grid">
+
+    <a href="maestro-acs-metrics-dashboard.html" class="dash-card">
+      <div class="dash-card-accent ac-maestro"></div>
+      <div class="dash-card-body">
+        <div class="dash-card-program">AIP · Implement Orchestration</div>
+        <div class="dash-card-title">Maestro — Agentic Customer Success</div>
+        <div class="dash-card-desc">Composite Efficiency Score, OKR progress, and tool-level metrics across Forethought AI, Cowork + Skill Exchange, and Copilot / Power Automate.</div>
+      </div>
+      <div class="dash-card-footer">
+        <span class="dash-card-meta">Updated 03/12/2026 &nbsp;·&nbsp; Salesforce nightly</span>
+        <span class="dash-card-badge badge-live">Live</span>
+      </div>
+    </a>
+
+    <div class="dash-card" style="opacity:.6;pointer-events:none">
+      <div class="dash-card-accent ac-placeholder"></div>
+      <div class="dash-card-body">
+        <div class="dash-card-program">AIP · Tiered CS</div>
+        <div class="dash-card-title">CS Tiering & Prioritization</div>
+        <div class="dash-card-desc">Account tier distribution, coverage metrics, and CSM capacity tracking across the tiered CS model.</div>
+      </div>
+      <div class="dash-card-footer">
+        <span class="dash-card-meta">Coming Q2 2026</span>
+        <span class="dash-card-badge badge-coming">Planned</span>
+      </div>
+    </div>
+
+    <div class="dash-card" style="opacity:.6;pointer-events:none">
+      <div class="dash-card-accent ac-placeholder"></div>
+      <div class="dash-card-body">
+        <div class="dash-card-program">AIP · Forethought AI</div>
+        <div class="dash-card-title">Forethought Support Operations</div>
+        <div class="dash-card-desc">Deep-dive into Forethought triage accuracy, deflection rates, CSAT trends, and Orchestrator performance.</div>
+      </div>
+      <div class="dash-card-footer">
+        <span class="dash-card-meta">Coming Q2 2026</span>
+        <span class="dash-card-badge badge-coming">Planned</span>
+      </div>
+    </div>
+
+    <div class="add-card">
+      <div class="add-icon">＋</div>
+      <div>New dashboards added here as programs go live</div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="ftr">
+  CS Dashboards &nbsp;·&nbsp; insightsoftware Customer Organization &nbsp;·&nbsp; github.com/Sissy64/cs-dashboards
+</div>
+
+</body>
+</html>

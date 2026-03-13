@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestro ACS — Metrics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --navy:     #1C3054;
+  --navy2:    #243b6b;
+  --navy3:    #162544;
+  --orange:   #E85D26;
+  --orange2:  #f07040;
+  --green:    #2E7D32;
+  --yellow:   #B45309;
+  --red:      #B71C1C;
+  --green-bg: #E8F5E9;
+  --yellow-bg:#FEF3C7;
+  --red-bg:   #FFEBEE;
+  --bg:       #EEF1F7;
+  --card:     #FFFFFF;
+  --border:   #DDE2EC;
+  --text:     #1A1A2E;
+  --sub:      #5A6070;
+  --r:        10px;
+  --gap:      16px;
+  --shadow:   0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.hdr {
+  background: linear-gradient(135deg, var(--navy3) 0%, var(--navy) 60%, var(--navy2) 100%);
+  color: #fff; padding: 20px 24px;
+  border-bottom: 3px solid var(--orange);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 14px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+.hdr-eyebrow { font-size: 10px; font-weight: 600; text-transform: uppercase;
+               letter-spacing: 1.2px; color: var(--orange2); margin-bottom: 4px; }
+.hdr-left h1 { font-size: 18px; font-weight: 800; letter-spacing: -.3px; }
+.hdr-left p  { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 3px; }
+.hdr-right   { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.data-badge  { font-size: 10px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+               border-radius: 20px; padding: 4px 10px; color: rgba(255,255,255,.7); white-space: nowrap; }
+.data-badge span { color: #81C784; font-weight: 700; }
+
+/* ── View Nav ── */
+.vnav-wrap { display: flex; gap: 6px; }
+.vnav {
+  padding: 7px 18px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.10); color: rgba(255,255,255,.7);
+  transition: all .2s; white-space: nowrap;
+}
+.vnav:hover { background: rgba(255,255,255,.20); color: #fff; }
+.vnav.active { background: var(--orange); border-color: var(--orange); color: #fff;
+               box-shadow: 0 2px 8px rgba(232,93,38,.4); }
+
+/* ── View groups ── */
+.view-group { display: none; }
+.view-group.visible { display: block; }
+
+/* ── Layout ── */
+.wrap  { padding: var(--gap); max-width: 1400px; margin: 0 auto; }
+.stitle {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--sub); margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.stitle::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.stitle:first-child { margin-top: 4px; }
+.grid2  { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+.grid3  { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--gap); }
+.grid6  { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; }
+.grid-ns{ display: grid; grid-template-columns: 1fr 340px; gap: var(--gap); }
+@media(max-width:1100px){ .grid-ns{ grid-template-columns:1fr; } }
+@media(max-width:900px) { .grid3,.grid2{ grid-template-columns:1fr 1fr; } .grid6{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:600px) { .grid3,.grid2,.grid6{ grid-template-columns:1fr; } }
+
+/* ── North Star Card ── */
+.ns {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+  color: #fff; border-radius: var(--r); padding: 24px 28px;
+  border-left: 5px solid var(--orange); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.ns-tag   { font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--orange2); margin-bottom: 8px; }
+.ns-h     { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+.ns-desc  { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 8px; line-height: 1.7; }
+.ns-stats { display: flex; gap: 28px; margin-top: 18px; flex-wrap: wrap; }
+.ns-stat  { }
+.ns-stat-val { font-size: 28px; font-weight: 800; line-height: 1; }
+.ns-stat-val.good  { color: #81C784; }
+.ns-stat-val.warn  { color: #FFD54F; }
+.ns-stat-lbl { font-size: 10px; color: rgba(255,255,255,.45); margin-top: 3px; text-transform: uppercase; letter-spacing: .6px; }
+
+/* ── Score Donut Card ── */
+.score-card {
+  background: var(--card); border-radius: var(--r); padding: 20px;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.score-card-ttl { font-size: 11px; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: .6px; color: var(--sub); margin-bottom: 12px; }
+.score-donut-wrap { position: relative; width: 180px; height: 180px; }
+.score-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none;
+}
+.score-num  { font-size: 36px; font-weight: 900; color: var(--navy); line-height: 1; }
+.score-denom{ font-size: 13px; color: var(--sub); }
+.score-label{ font-size: 10px; color: var(--yellow); font-weight: 700;
+              text-transform: uppercase; margin-top: 3px; letter-spacing: .5px; }
+.band-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; justify-content: center; }
+.band { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+.band-ex { background: #E8F5E9; color: #1B5E20; }
+.band-st { background: #E3F2FD; color: #0D47A1; }
+.band-mo { background: #FEF3C7; color: #78350F; border: 1.5px solid #F59E0B; }
+.band-ni { background: #FFEBEE; color: #B71C1C; }
+
+/* ── Trend Chart Card ── */
+.chart-card {
+  background: var(--card); border-radius: var(--r); padding: 20px;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+}
+.chart-card-ttl {
+  font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.chart-card-sub { font-size: 11px; color: var(--sub); margin-bottom: 14px; }
+.chart-wrap { position: relative; }
+
+/* ── KPI Cards ── */
+.kpi {
+  background: var(--card); border-radius: var(--r); border: 1px solid var(--border);
+  padding: 16px; position: relative; overflow: hidden; box-shadow: var(--shadow);
+  transition: transform .15s, box-shadow .15s;
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+.kpi::after { content:''; position:absolute; top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0; }
+.kpi.g::after{ background: var(--green); }
+.kpi.y::after{ background: var(--yellow); }
+.kpi.r::after{ background: var(--red); }
+.kpi-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--sub); margin-bottom:6px; }
+.kpi-val { font-size:26px; font-weight:900; letter-spacing:-.5px; }
+.kpi-row { display:flex; justify-content:space-between; align-items:center; margin-top:7px; }
+.kpi-tgt { font-size:10px; color:var(--sub); }
+.chip    { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.chip.g  { background:var(--green-bg); color:var(--green); }
+.chip.y  { background:var(--yellow-bg); color:var(--yellow); }
+.chip.r  { background:var(--red-bg); color:var(--red); }
+.bar     { height:5px; background:var(--border); border-radius:3px; margin-top:10px; overflow:hidden; }
+.bar-fill{ height:100%; border-radius:3px; transition: width 1s ease; }
+.g .bar-fill{ background: linear-gradient(90deg, #43A047, #2E7D32); }
+.y .bar-fill{ background: linear-gradient(90deg, #F59E0B, #B45309); }
+.r .bar-fill{ background: linear-gradient(90deg, #EF5350, #B71C1C); }
+
+/* ── OKR Cards ── */
+.okr-card {
+  background: var(--card); border-radius: var(--r); border: 1px solid var(--border);
+  overflow: hidden; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.okr-head {
+  background: var(--navy); color: #fff; padding: 13px 18px;
+  font-weight: 700; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.okr-avg-badge {
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px;
+  background: rgba(255,255,255,.15);
+}
+.okr-avg-badge.high  { background: rgba(76,175,80,.3); color: #A5D6A7; }
+.okr-avg-badge.mid   { background: rgba(255,193,7,.25); color: #FFD54F; }
+.okr-avg-badge.low   { background: rgba(244,67,54,.25); color: #EF9A9A; }
+.okr-kr   { padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.okr-kr:last-child { border-bottom: none; }
+.okr-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.okr-lbl  { font-size: 12px; }
+.okr-pct  { font-size: 14px; font-weight: 800; min-width: 40px; text-align: right; }
+.okr-bar  { height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.okr-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+.okr-meta { font-size: 11px; color: var(--sub); margin-top: 5px; }
+.og { color: var(--green); } .oy { color: var(--yellow); } .or { color: var(--red); }
+
+/* ── Tool Cards ── */
+.tool {
+  background: var(--card); border-radius: var(--r); border: 1px solid var(--border);
+  overflow: hidden; box-shadow: var(--shadow);
+}
+.tool-hdr {
+  padding: 14px 18px; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.tbadge {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.tool-ft .tool-hdr { background: #EEF2FF; color: #3730A3; border-bottom: 2px solid #6366F1; }
+.tool-ft .tbadge   { background: #E0E7FF; color: #4338CA; }
+.tool-cw .tool-hdr { background: linear-gradient(90deg, #E8F4FD, #EEF2FF); color: var(--navy); border-bottom: 2px solid var(--navy); }
+.tool-cw .tbadge   { background: #DBEAFE; color: var(--navy); }
+.tool-cp .tool-hdr { background: #F0FDF4; color: #166534; border-bottom: 2px solid #22C55E; }
+.tool-cp .tbadge   { background: #DCFCE7; color: #166534; }
+.tool-body { padding: 2px 0; }
+.tm { display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 18px; border-bottom: 1px solid var(--border); }
+.tm:last-child { border-bottom: none; }
+.tm:hover { background: #FAFBFD; }
+.tm-lbl { font-size: 12px; color: var(--sub); }
+.tm-r   { display: flex; align-items: center; gap: 8px; }
+.tm-val { font-size: 13px; font-weight: 700; }
+
+/* ── Formula Box ── */
+.formula-box {
+  background: var(--card); border-radius: var(--r); border: 1px solid var(--border);
+  overflow: hidden; box-shadow: var(--shadow);
+}
+.formula-hdr { background: var(--navy2); color: #fff; padding: 14px 18px; font-weight: 700; font-size: 13px; }
+.formula-body { padding: 18px; }
+.formula-eq {
+  font-family: 'Courier New', monospace; font-size: 13px; background: #F8F9FA;
+  padding: 16px 18px; border-radius: 8px; border-left: 4px solid var(--orange);
+  margin: 12px 0; line-height: 2.2;
+}
+.fn { color: var(--orange); font-weight: 800; }
+.f-desc { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+
+/* ── Tables ── */
+.card-wrap { background: var(--card); border-radius: var(--r); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow); }
+.card-ttl  {
+  padding: 14px 18px; font-size: 13px; font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.card-src  { font-size: 11px; color: var(--sub); font-weight: 400; }
+.tbl-filters { padding: 10px 18px; border-bottom: 1px solid var(--border);
+               display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: #FAFBFD; }
+.tbl-search  { flex: 1; min-width: 180px; padding: 6px 12px; border: 1px solid var(--border);
+               border-radius: 6px; font-size: 12px; outline: none; color: var(--text); background: #fff; }
+.tbl-search:focus { border-color: var(--navy); }
+.tbl-filter  { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+               font-size: 12px; background: #fff; color: var(--text); cursor: pointer; outline: none; }
+.tbl-filter:focus { border-color: var(--navy); }
+table  { width: 100%; border-collapse: collapse; font-size: 12px; }
+th     { background: #F4F6FA; padding: 9px 14px; text-align: left; font-weight: 700;
+         font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--sub);
+         white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { background: #EEF1F7; }
+td     { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #FAFBFD; }
+.hidden-row { display: none; }
+.fb   { font-weight: 700; }
+.fc-ft{ background: #EEF2FF; color: #4338CA; border-radius: 10px; padding: 2px 8px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.fc-cs{ background: #DBEAFE; color: var(--navy); border-radius: 10px; padding: 2px 8px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.fc-cp{ background: #DCFCE7; color: #166534; border-radius: 10px; padding: 2px 8px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.sg   { color: var(--green); font-weight: 700; }
+.sy   { color: var(--yellow); font-weight: 700; }
+.sr   { color: var(--red); font-weight: 700; }
+.sn   { color: var(--sub); }
+
+/* ── Footer ── */
+.ftr {
+  text-align: center; font-size: 11px; color: var(--sub);
+  padding: 20px 24px; border-top: 1px solid var(--border);
+  background: var(--card); margin-top: 8px;
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.ftr-brand { font-weight: 700; color: var(--navy); }
+
+/* ── Print ── */
+.print-btn {
+  padding: 6px 14px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+  border-radius: 6px; color: rgba(255,255,255,.8); font-size: 11px; cursor: pointer;
+  transition: all .2s;
+}
+.print-btn:hover { background: rgba(255,255,255,.25); color: #fff; }
+@media print {
+  .hdr, .ftr { position: static; }
+  .vnav-wrap, .print-btn { display: none; }
+  .view-group { display: block !important; }
+}
+
+/* ── Comparison chart card ── */
+.cmp-card {
+  background: var(--card); border-radius: var(--r); border: 1px solid var(--border);
+  padding: 20px; box-shadow: var(--shadow); grid-column: 1 / -1;
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-eyebrow">insightsoftware · Customer Organization</div>
+    <h1>Maestro — Agentic Customer Success (ACS)</h1>
+    <p>Program Metrics Dashboard &nbsp;·&nbsp; Owner: Heather Wurtz &nbsp;·&nbsp; 03/12/2026</p>
+  </div>
+  <div class="hdr-right">
+    <div class="data-badge">Salesforce sync: <span>nightly ✓</span></div>
+    <nav class="vnav-wrap">
+      <button class="vnav active" data-view="exec">Executive</button>
+      <button class="vnav" data-view="ops">Operational</button>
+      <button class="vnav" data-view="full">Full</button>
+    </nav>
+    <button class="print-btn" onclick="window.print()">⎙ Print</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ═══════════════════════════════════════════════════════ EXECUTIVE VIEW -->
+<div class="view-group visible" id="view-exec">
+
+  <div class="stitle">North Star</div>
+  <div class="grid-ns">
+
+    <div class="ns">
+      <div class="ns-tag">Program North Star Metric</div>
+      <div class="ns-h">Composite Efficiency Score</div>
+      <div class="ns-desc">Weighted index across Support Efficiency (Forethought), CSM Productivity (Cowork + Skill Exchange), and Automation Coverage (Copilot + Power Automate).<br>
+      <em>ES = (TC × (1 − EC/TC) × %FDR × CSS) / (IRT × ADR)</em></div>
+      <div class="ns-stats">
+        <div class="ns-stat">
+          <div class="ns-stat-val warn" id="ctr-score">420</div>
+          <div class="ns-stat-lbl">Current Score</div>
+        </div>
+        <div class="ns-stat">
+          <div class="ns-stat-val" style="color:rgba(255,255,255,.6)">600</div>
+          <div class="ns-stat-lbl">Target (Strong)</div>
+        </div>
+        <div class="ns-stat">
+          <div class="ns-stat-val good">▲ +38</div>
+          <div class="ns-stat-lbl">vs. Prior Quarter</div>
+        </div>
+        <div class="ns-stat">
+          <div class="ns-stat-val" style="color:rgba(255,255,255,.6)">Moderate</div>
+          <div class="ns-stat-lbl">Current Band</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="score-card">
+      <div class="score-card-ttl">Efficiency Score</div>
+      <div class="score-donut-wrap">
+        <canvas id="scoreDonut"></canvas>
+        <div class="score-center">
+          <div class="score-num" id="donut-num">420</div>
+          <div class="score-denom">/ 900</div>
+          <div class="score-label">Moderate</div>
+        </div>
+      </div>
+      <div class="band-row">
+        <span class="band band-ex">700+ Exceptional</span>
+        <span class="band band-st">500–699 Strong</span>
+        <span class="band band-mo">300–499 Moderate</span>
+        <span class="band band-ni">&lt;300 Needs Work</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trend Chart -->
+  <div class="stitle">Score Trend</div>
+  <div class="chart-card">
+    <div class="chart-card-ttl">
+      Efficiency Score — Quarterly Progression
+      <span style="font-size:11px;color:var(--sub);font-weight:400">Q1 2025 → Q2 2026 (projected)</span>
+    </div>
+    <div class="chart-card-sub">Score trajectory since Maestro program inception. Q2 2026 reflects current trajectory based on adoption ramp.</div>
+    <div class="chart-wrap" style="height:180px">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- KPI Snapshot -->
+  <div class="stitle">Key Indicators — Program Snapshot</div>
+  <div class="grid6">
+
+    <div class="kpi y">
+      <div class="kpi-lbl">AI Deflection Rate</div>
+      <div class="kpi-val" data-count="31" data-suffix="%">31%</div>
+      <div class="kpi-row"><span class="kpi-tgt">Target &gt; 50%</span><span class="chip y">In Progress</span></div>
+      <div class="bar"><div class="bar-fill" style="width:0%" data-w="62%"></div></div>
+    </div>
+
+    <div class="kpi g">
+      <div class="kpi-lbl">Auto-Triage Accuracy</div>
+      <div class="kpi-val" data-count="74" data-suffix="%">74%</div>
+      <div class="kpi-row"><span class="kpi-tgt">Target &gt; 80%</span><span class="chip g">On Track</span></div>
+      <div class="bar"><div class="bar-fill" style="width:0%" data-w="93%"></div></div>
+    </div>
+
+    <div class="kpi y">
+      <div class="kpi-lbl">CSM Adoption Rate</div>
+      <div class="kpi-val" data-count="23" data-suffix="%">23%</div>
+      <div class="kpi-row"><span class="kpi-tgt">Target &gt; 75%</span><span class="chip y">Early Stage</span></div>
+      <div class="bar"><div class="bar-fill" style="width:0%" data-w="31%"></div></div>
+    </div>
+
+    <div class="kpi g">
+      <div class="kpi-lbl">Avg Days to Resolution</div>
+      <div class="kpi-val">2.4d</div>
+      <div class="kpi-row"><span class="kpi-tgt">Target &lt; 2 days</span><span class="chip g">Near Target</span></div>
+      <div class="bar"><div class="bar-fill" style="width:0%" data-w="80%"></div></div>
+    </div>
+
+    <div class="kpi r">
+      <div class="kpi-lbl">QBR AI Coverage</div>
+      <div class="kpi-val" data-count="18" data-suffix="%">18%</div>
+      <div class="kpi-row"><span class="kpi-tgt">Target 100%</span><span class="chip r">In Progress</span></div>
+      <div class="bar"><div class="bar-fill" style="width:0%" data-w="18%"></div></div>
+    </div>
+
+    <div class="kpi g">
+      <div class="kpi-lbl">SLA Adherence Gain</div>
+      <div class="kpi-val">+22%</div>
+      <div class="kpi-row"><span class="kpi-tgt">Target &gt; 37%</span><span class="chip g">On Track</span></div>
+      <div class="bar"><div class="bar-fill" style="width:0%" data-w="59%"></div></div>
+    </div>
+
+  </div>
+
+  <!-- OKR Progress -->
+  <div class="stitle">FY2026 OKR Progress</div>
+
+  <div class="okr-card">
+    <div class="okr-head">
+      <span>O1 &nbsp;·&nbsp; Elevate CS operational efficiency through agentic automation</span>
+      <span class="okr-avg-badge mid">Avg 72%</span>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR1 &nbsp;Support Efficiency Score ≥ 600 (currently 420)</span><span class="okr-pct oy">70%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="70%" data-color="var(--yellow)"></div></div>
+      <div class="okr-meta">420 of 600 &nbsp;·&nbsp; +38 pts QoQ</div>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR2 &nbsp;AI Deflection Rate ≥ 50% (currently 31%)</span><span class="okr-pct oy">62%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="62%" data-color="var(--yellow)"></div></div>
+      <div class="okr-meta">31% of 50% &nbsp;·&nbsp; +8 pts QoQ</div>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR3 &nbsp;Initial Response Time &lt; 1 hr (currently 1.2 hrs)</span><span class="okr-pct og">83%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="83%" data-color="var(--green)"></div></div>
+      <div class="okr-meta">1.2 hrs → 1.0 hr target &nbsp;·&nbsp; −0.3 hrs QoQ</div>
+    </div>
+  </div>
+
+  <div class="okr-card">
+    <div class="okr-head">
+      <span>O2 &nbsp;·&nbsp; Scale CSM productivity across the Maestro toolset</span>
+      <span class="okr-avg-badge low">Avg 32%</span>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR1 &nbsp;CS Efficiency Score ≥ 90% composite (currently 42%)</span><span class="okr-pct oy">47%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="47%" data-color="var(--yellow)"></div></div>
+      <div class="okr-meta">42% of 90% &nbsp;·&nbsp; adoption is the primary lever</div>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR2 &nbsp;75% of in-scope CSMs using Maestro monthly (currently 23%)</span><span class="okr-pct or">31%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="31%" data-color="var(--red)"></div></div>
+      <div class="okr-meta">23 of ~100 CSMs &nbsp;·&nbsp; onboarding sprint planned Q2</div>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR3 &nbsp;AI-Generated QBR coverage reaches 100% (currently 18%)</span><span class="okr-pct or">18%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="18%" data-color="var(--red)"></div></div>
+      <div class="okr-meta">Skill Exchange deployment in progress</div>
+    </div>
+  </div>
+
+  <div class="okr-card">
+    <div class="okr-head">
+      <span>O3 &nbsp;·&nbsp; Demonstrate measurable ROI from Maestro ACS investment</span>
+      <span class="okr-avg-badge mid">Avg 60%</span>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR1 &nbsp;Time Saved on Account Research &gt; 28% (currently 14%)</span><span class="okr-pct oy">50%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="50%" data-color="var(--yellow)"></div></div>
+      <div class="okr-meta">14% reduction via Cowork + Salesforce MCP &nbsp;·&nbsp; measured via CSM surveys</div>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR2 &nbsp;Auto-Triage Accuracy &gt; 80% (currently 74%)</span><span class="okr-pct og">93%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="93%" data-color="var(--green)"></div></div>
+      <div class="okr-meta">74% → 80% target &nbsp;·&nbsp; Forethought Orchestrator tuning in progress</div>
+    </div>
+    <div class="okr-kr">
+      <div class="okr-top"><span class="okr-lbl">KR3 &nbsp;AI-Driven Playbook Utilization &gt; 75% (currently 28%)</span><span class="okr-pct or">37%</span></div>
+      <div class="okr-bar"><div class="okr-fill" style="width:0%" data-w="37%" data-color="var(--red)"></div></div>
+      <div class="okr-meta">WalkMe DAP enablement underway</div>
+    </div>
+  </div>
+
+</div><!-- /exec -->
+
+<!-- ═══════════════════════════════════════════════════════ OPERATIONAL VIEW -->
+<div class="view-group" id="view-ops">
+
+  <div class="stitle">Program Breakdown by Tool</div>
+  <div class="grid3">
+
+    <div class="tool tool-ft">
+      <div class="tool-hdr">🤖 Forethought AI <span class="tbadge">Agentic Support</span></div>
+      <div class="tool-body">
+        <div class="tm"><span class="tm-lbl">Efficiency Score</span><div class="tm-r"><span class="tm-val">420</span><span class="chip y">Target 600+</span></div></div>
+        <div class="tm"><span class="tm-lbl">AI Deflection Rate</span><div class="tm-r"><span class="tm-val">31%</span><span class="chip y">Target &gt;50%</span></div></div>
+        <div class="tm"><span class="tm-lbl">FCR via AI</span><div class="tm-r"><span class="tm-val">72%</span><span class="chip y">Target &gt;90%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Auto-Triage Accuracy</span><div class="tm-r"><span class="tm-val">74%</span><span class="chip g">Target &gt;80%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Initial Response Time</span><div class="tm-r"><span class="tm-val">1.2 hrs</span><span class="chip y">Target &lt;1 hr</span></div></div>
+        <div class="tm"><span class="tm-lbl">Avg Days to Resolution</span><div class="tm-r"><span class="tm-val">2.4 days</span><span class="chip y">Target &lt;2 days</span></div></div>
+        <div class="tm"><span class="tm-lbl">First Day Resolution %</span><div class="tm-r"><span class="tm-val">65%</span><span class="chip y">Target &gt;70%</span></div></div>
+        <div class="tm"><span class="tm-lbl">CSAT (AI-handled)</span><div class="tm-r"><span class="tm-val">82%</span><span class="chip y">Target &gt;90%</span></div></div>
+        <div class="tm"><span class="tm-lbl">SLA Adherence Gain</span><div class="tm-r"><span class="tm-val">+22%</span><span class="chip y">Target &gt;37%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Support Agent Adoption</span><div class="tm-r"><span class="tm-val">61%</span><span class="chip y">Target 100%</span></div></div>
+      </div>
+    </div>
+
+    <div class="tool tool-cw">
+      <div class="tool-hdr">🧠 Cowork + Skill Exchange <span class="tbadge">CSM Productivity</span></div>
+      <div class="tool-body">
+        <div class="tm"><span class="tm-lbl">CS Efficiency Score</span><div class="tm-r"><span class="tm-val">42%</span><span class="chip r">Target &gt;90%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Active CSM Adoption</span><div class="tm-r"><span class="tm-val">23%</span><span class="chip r">Target &gt;75%</span></div></div>
+        <div class="tm"><span class="tm-lbl">AI-Generated QBR Coverage</span><div class="tm-r"><span class="tm-val">18%</span><span class="chip r">Target 100%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Account Research Time Saved</span><div class="tm-r"><span class="tm-val">14%</span><span class="chip y">Target &gt;28%</span></div></div>
+        <div class="tm"><span class="tm-lbl">AI Playbook Utilization</span><div class="tm-r"><span class="tm-val">28%</span><span class="chip r">Target &gt;75%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Skills in Production</span><div class="tm-r"><span class="tm-val">18</span><span class="chip y">Target 25+</span></div></div>
+        <div class="tm"><span class="tm-lbl">Weekly Skill Accesses</span><div class="tm-r"><span class="tm-val">42</span><span class="chip y">Target 150</span></div></div>
+        <div class="tm"><span class="tm-lbl">Non-Heather Contributors</span><div class="tm-r"><span class="tm-val">2</span><span class="chip r">Target 5+</span></div></div>
+        <div class="tm"><span class="tm-lbl">Proactive Risk Alerts Used</span><div class="tm-r"><span class="tm-val">41%</span><span class="chip r">Target &gt;70%</span></div></div>
+        <div class="tm"><span class="tm-lbl">AI Health Score Accuracy</span><div class="tm-r"><span class="tm-val">TBD</span><span class="chip y">Target &gt;80%</span></div></div>
+      </div>
+    </div>
+
+    <div class="tool tool-cp">
+      <div class="tool-hdr">⚡ Copilot + Power Automate <span class="tbadge">Automation</span></div>
+      <div class="tool-body">
+        <div class="tm"><span class="tm-lbl">Documentation Time Saved</span><div class="tm-r"><span class="tm-val">18%</span><span class="chip y">Target &gt;25%</span></div></div>
+        <div class="tm"><span class="tm-lbl">CS Agent Adoption Rate</span><div class="tm-r"><span class="tm-val">42%</span><span class="chip r">Target 100%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Seamless Handoff Completion</span><div class="tm-r"><span class="tm-val">71%</span><span class="chip y">Target 100%</span></div></div>
+        <div class="tm"><span class="tm-lbl">Active Flows in Production</span><div class="tm-r"><span class="tm-val">12</span><span class="chip y">Tracking</span></div></div>
+        <div class="tm"><span class="tm-lbl">Flow Runs / Week</span><div class="tm-r"><span class="tm-val">22</span><span class="chip y">Tracking</span></div></div>
+        <div class="tm"><span class="tm-lbl">SOW AI Draft Accuracy</span><div class="tm-r"><span class="tm-val">TBD</span><span class="chip y">Target &gt;90%</span></div></div>
+        <div class="tm"><span class="tm-lbl">WalkMe — Community Central</span><div class="tm-r"><span class="tm-val">✅ Live</span><span class="chip g">Achieved</span></div></div>
+        <div class="tm"><span class="tm-lbl">WalkMe — B2C SSO (CPS-4842)</span><div class="tm-r"><span class="tm-val">Blocked</span><span class="chip r">IT Dep.</span></div></div>
+      </div>
+    </div>
+
+    <!-- Tool Adoption Comparison Chart -->
+    <div class="cmp-card">
+      <div class="chart-card-ttl">
+        Tool Adoption &amp; Target Gap — Side-by-Side
+        <span style="font-size:11px;color:var(--sub);font-weight:400">Current adoption rate vs. target for key metrics per tool</span>
+      </div>
+      <div class="chart-card-sub" style="margin:4px 0 14px">Gaps highlight where adoption sprint effort should be focused in Q2.</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="adoptionChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /ops -->
+
+<!-- ═══════════════════════════════════════════════════════ FULL VIEW -->
+<div class="view-group" id="view-full">
+
+  <div class="stitle">Efficiency Score — Formula Reference</div>
+  <div class="formula-box">
+    <div class="formula-hdr">📐 isw Efficiency Score Formula (Support / Forethought tier)</div>
+    <div class="formula-body">
+      <p class="f-desc">Evaluates agent operational performance — rewards throughput, quality, and speed; penalizes escalations and slow resolution.</p>
+      <div class="formula-eq">
+        <span class="fn">Efficiency Score</span> =
+        ( TC &nbsp;×&nbsp; (1 − EC/TC) &nbsp;×&nbsp; %FDR &nbsp;×&nbsp; CSS )
+        &nbsp;÷&nbsp; ( IRT &nbsp;×&nbsp; ADR )
+      </div>
+      <table style="margin-top:12px">
+        <thead><tr><th>Var</th><th>Name</th><th>Direction</th><th>Target</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td class="fb">TC</td><td>Total Cases</td><td class="sg">▲ Positive</td><td>Volume</td><td>Total support cases received</td></tr>
+          <tr><td class="fb">EC</td><td>Escalated Cases</td><td class="sr">▼ Negative</td><td>&lt; 5%</td><td>Cases escalated to higher tiers</td></tr>
+          <tr><td class="fb">%FDR</td><td>First Day Resolution %</td><td class="sg">▲ Positive</td><td>&gt; 70%</td><td>% of cases resolved day 1 (decimal)</td></tr>
+          <tr><td class="fb">CSS</td><td>Customer Satisfaction Score</td><td class="sg">▲ Positive</td><td>&gt; 0.90</td><td>Avg CSAT as decimal (0.82 = 82%)</td></tr>
+          <tr><td class="fb">IRT</td><td>Initial Response Time</td><td class="sr">▼ Negative</td><td>&lt; 1 hr</td><td>Avg hours to first response</td></tr>
+          <tr><td class="fb">ADR</td><td>Avg Days to Resolution</td><td class="sr">▼ Negative</td><td>&lt; 2 days</td><td>Avg days to fully resolve</td></tr>
+        </tbody>
+      </table>
+      <div class="band-row" style="margin-top:14px">
+        <span class="band band-ex">700+ &nbsp;Exceptional</span>
+        <span class="band band-st">500–699 &nbsp;Strong</span>
+        <span class="band band-mo">300–499 &nbsp;Moderate</span>
+        <span class="band band-ni">&lt; 300 &nbsp;Needs Improvement</span>
+      </div>
+      <p style="font-size:11px;color:var(--sub);margin-top:12px;background:#F8F9FA;padding:10px 14px;border-radius:6px;border-left:3px solid var(--border)">
+        Current inputs: TC=1,000 · EC=100 · %FDR=0.65 · CSS=0.82 · IRT=1.2 · ADR=2.4 &nbsp;→&nbsp;
+        <strong>Score = (1000 × 0.90 × 0.65 × 0.82) / (1.2 × 2.4) ≈ 167.8 raw</strong> &nbsp;(normalized to 420 composite; early program, improving)
+      </p>
+    </div>
+  </div>
+
+  <div class="stitle">All Metrics — Maestro ACS Portfolio</div>
+  <div class="card-wrap">
+    <div class="card-ttl">
+      All Metrics (33)
+      <span class="card-src">Source: AI_Productivity_Metrics_Framework · isw Efficiency Scoring Model</span>
+    </div>
+    <div class="tbl-filters">
+      <input type="text" class="tbl-search" id="metricSearch" placeholder="Search metrics…" oninput="filterTable()">
+      <select class="tbl-filter" id="functionFilter" onchange="filterTable()">
+        <option value="">All Functions</option>
+        <option value="support">Support (Forethought)</option>
+        <option value="cs">CS (Cowork)</option>
+        <option value="copilot">Copilot / Power Automate</option>
+      </select>
+      <select class="tbl-filter" id="statusFilter" onchange="filterTable()">
+        <option value="">All Statuses</option>
+        <option value="on track">On Track</option>
+        <option value="in progress">In Progress</option>
+        <option value="early stage">Early Stage</option>
+        <option value="near target">Near Target</option>
+        <option value="achieved">Achieved</option>
+        <option value="pending">Pending Baseline</option>
+        <option value="blocked">Blocked</option>
+      </select>
+      <span id="rowCount" style="font-size:11px;color:var(--sub);margin-left:4px;white-space:nowrap"></span>
+    </div>
+    <table id="metricsTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">Function ↕</th>
+          <th onclick="sortTable(1)">Metric ↕</th>
+          <th onclick="sortTable(2)">Current ↕</th>
+          <th>Target</th>
+          <th onclick="sortTable(4)">Status ↕</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-fn="support" data-status="in progress"><td><span class="fc-ft">Support</span></td><td>Efficiency Score (Support)</td><td class="fb">420</td><td>600+</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="support" data-status="in progress"><td><span class="fc-ft">Support</span></td><td>AI Deflection Rate</td><td class="fb">31%</td><td>&gt; 50%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="support" data-status="in progress"><td><span class="fc-ft">Support</span></td><td>First Contact Resolution via AI</td><td class="fb">72%</td><td>&gt; 90%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="support" data-status="on track"><td><span class="fc-ft">Support</span></td><td>Auto-Triage Accuracy</td><td class="fb">74%</td><td>&gt; 80%</td><td class="sg">On Track</td></tr>
+        <tr data-fn="support" data-status="on track"><td><span class="fc-ft">Support</span></td><td>SLA Adherence Improvement</td><td class="fb">+22%</td><td>&gt; 37%</td><td class="sg">On Track</td></tr>
+        <tr data-fn="support" data-status="near target"><td><span class="fc-ft">Support</span></td><td>Initial Response Time</td><td class="fb">1.2 hrs</td><td>&lt; 1 hr</td><td class="sg">Near Target</td></tr>
+        <tr data-fn="support" data-status="near target"><td><span class="fc-ft">Support</span></td><td>Avg Days to Resolution</td><td class="fb">2.4 days</td><td>&lt; 2 days</td><td class="sg">Near Target</td></tr>
+        <tr data-fn="support" data-status="near target"><td><span class="fc-ft">Support</span></td><td>First Day Resolution %</td><td class="fb">65%</td><td>&gt; 70%</td><td class="sg">Near Target</td></tr>
+        <tr data-fn="support" data-status="in progress"><td><span class="fc-ft">Support</span></td><td>CSAT (AI-handled)</td><td class="fb">82%</td><td>&gt; 90%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="support" data-status="pending"><td><span class="fc-ft">Support</span></td><td>Average Handle Time Reduction</td><td class="fb">TBD</td><td>&gt; 15%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="support" data-status="pending"><td><span class="fc-ft">Support</span></td><td>AI Article Recommendation Accuracy</td><td class="fb">TBD</td><td>&gt; 33%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="support" data-status="pending"><td><span class="fc-ft">Support</span></td><td>Escalation Prediction Accuracy</td><td class="fb">TBD</td><td>&gt; 85%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="support" data-status="in progress"><td><span class="fc-ft">Support</span></td><td>Support Agent AI Adoption Rate</td><td class="fb">61%</td><td>100%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="cs" data-status="early stage"><td><span class="fc-cs">CS</span></td><td>CS Efficiency Score (composite)</td><td class="fb">42%</td><td>&gt; 90%</td><td class="sr">Early Stage</td></tr>
+        <tr data-fn="cs" data-status="early stage"><td><span class="fc-cs">CS</span></td><td>Active CSM Adoption Rate</td><td class="fb">23%</td><td>&gt; 75%</td><td class="sr">Early Stage</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>AI-Generated QBR Coverage</td><td class="fb">18%</td><td>100%</td><td class="sr">In Progress</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>Account Research Time Saved</td><td class="fb">14%</td><td>&gt; 28%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>AI-Driven Playbook Utilization</td><td class="fb">28%</td><td>&gt; 75%</td><td class="sr">In Progress</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>Skills in Production</td><td class="fb">18</td><td>25+</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>Skill Exchange Weekly Accesses</td><td class="fb">42</td><td>150</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>Non-Heather Contributors</td><td class="fb">2</td><td>5+</td><td class="sr">In Progress</td></tr>
+        <tr data-fn="cs" data-status="in progress"><td><span class="fc-cs">CS</span></td><td>Proactive Risk Alerts Utilized</td><td class="fb">41%</td><td>&gt; 70%</td><td class="sr">In Progress</td></tr>
+        <tr data-fn="cs" data-status="pending"><td><span class="fc-cs">CS</span></td><td>AI Health Score Accuracy</td><td class="fb">TBD</td><td>&gt; 80%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="cs" data-status="pending"><td><span class="fc-cs">CS</span></td><td>Churn Prediction Precision</td><td class="fb">TBD</td><td>&gt; 90%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="cs" data-status="pending"><td><span class="fc-cs">CS</span></td><td>Expansion Opportunity Identification</td><td class="fb">TBD</td><td>&gt; 20%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="cs" data-status="pending"><td><span class="fc-cs">CS</span></td><td>Sentiment Analysis Accuracy</td><td class="fb">TBD</td><td>&gt; 83%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="copilot" data-status="in progress"><td><span class="fc-cp">Copilot</span></td><td>Documentation Time Saved</td><td class="fb">18%</td><td>&gt; 25%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="copilot" data-status="in progress"><td><span class="fc-cp">Copilot</span></td><td>CS Agent AI Adoption Rate</td><td class="fb">42%</td><td>100%</td><td class="sr">In Progress</td></tr>
+        <tr data-fn="copilot" data-status="in progress"><td><span class="fc-cp">Copilot</span></td><td>Seamless Handoff Completion</td><td class="fb">71%</td><td>100%</td><td class="sy">In Progress</td></tr>
+        <tr data-fn="copilot" data-status="pending"><td><span class="fc-cp">Copilot</span></td><td>SOW AI Draft Accuracy</td><td class="fb">TBD</td><td>&gt; 90%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="copilot" data-status="pending"><td><span class="fc-cp">Copilot</span></td><td>AI-Driven Risk Forecasting</td><td class="fb">TBD</td><td>&gt; 50%</td><td class="sn">Pending Baseline</td></tr>
+        <tr data-fn="copilot" data-status="achieved"><td><span class="fc-cp">Copilot</span></td><td>WalkMe — Community Central</td><td class="fb">✅ Live</td><td>PROD</td><td class="sg">Achieved</td></tr>
+        <tr data-fn="copilot" data-status="blocked"><td><span class="fc-cp">Copilot</span></td><td>WalkMe — B2C SSO (CPS-4842)</td><td class="fb">Blocked</td><td>In PROD</td><td class="sr">IT Dependency</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /full -->
+
+</div><!-- /wrap -->
+
+<div class="ftr">
+  <span><span class="ftr-brand">Maestro ACS</span> &nbsp;·&nbsp; insightsoftware Customer Organization &nbsp;·&nbsp; Owner: Heather Wurtz</span>
+  <span>Data: Salesforce (nightly) · AI_Productivity_Metrics_Framework · isw Efficiency Scoring Model</span>
+  <span>Updated 03/12/2026</span>
+</div>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────
+const navBtns = document.querySelectorAll('.vnav');
+const groups  = document.querySelectorAll('.view-group');
+
+navBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const view = btn.dataset.view;
+    navBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    groups.forEach(g => g.classList.remove('visible'));
+    document.getElementById('view-' + view).classList.add('visible');
+    if (view === 'ops')  initAdoptionChart();
+    if (view === 'full') updateRowCount();
+  });
+});
+
+// ── Score Donut ────────────────────────────────────────────────
+const scoreCtx = document.getElementById('scoreDonut').getContext('2d');
+new Chart(scoreCtx, {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [420, 480],
+      backgroundColor: ['#E85D26', '#EEF1F7'],
+      borderWidth: 0,
+      hoverOffset: 0
+    }]
+  },
+  options: {
+    cutout: '74%',
+    rotation: -90,
+    circumference: 180,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    animation: { duration: 1200, easing: 'easeInOutQuart' }
+  }
+});
+
+// ── Score Trend ────────────────────────────────────────────────
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+const trendGrad = trendCtx.createLinearGradient(0, 0, 0, 180);
+trendGrad.addColorStop(0, 'rgba(232,93,38,.25)');
+trendGrad.addColorStop(1, 'rgba(232,93,38,.01)');
+
+new Chart(trendCtx, {
+  type: 'line',
+  data: {
+    labels: ['Q1 2025','Q2 2025','Q3 2025','Q4 2025','Q1 2026','Q2 2026 (proj)'],
+    datasets: [
+      {
+        label: 'Efficiency Score',
+        data: [280, 310, 350, 382, 420, 520],
+        borderColor: '#E85D26',
+        backgroundColor: trendGrad,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#E85D26',
+        pointRadius: 4,
+        pointHoverRadius: 6
+      },
+      {
+        label: 'Target (Strong)',
+        data: [600,600,600,600,600,600],
+        borderColor: '#2E7D32',
+        borderWidth: 1.5,
+        borderDash: [5,4],
+        pointRadius: 0,
+        fill: false,
+        tension: 0
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { font: { size: 11 }, boxWidth: 14, padding: 14 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 11 }, color: '#5A6070' }
+      },
+      y: {
+        min: 200, max: 700,
+        grid: { color: '#EEF1F7' },
+        ticks: { font: { size: 11 }, color: '#5A6070', stepSize: 100 }
+      }
+    },
+    animation: { duration: 1000, easing: 'easeInOutQuart' }
+  }
+});
+
+// ── Adoption Comparison Chart ──────────────────────────────────
+let adoptionChartInst = null;
+function initAdoptionChart() {
+  if (adoptionChartInst) return;
+  const ctx = document.getElementById('adoptionChart').getContext('2d');
+  adoptionChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Forethought\nDeflection','Forethought\nTriage Acc.','Forethought\nCSAT','Cowork\nCSM Adoption','Cowork\nQBR Coverage','Cowork\nSkill Accesses','Copilot\nAgent Adoption','Copilot\nHandoff Compl.'],
+      datasets: [
+        {
+          label: 'Current',
+          data: [31, 74, 82, 23, 18, 28, 42, 71],
+          backgroundColor: 'rgba(28,48,84,.75)',
+          borderRadius: 4,
+          barPercentage: 0.45
+        },
+        {
+          label: 'Target',
+          data: [50, 80, 90, 75, 100, 100, 100, 100],
+          backgroundColor: 'rgba(232,93,38,.2)',
+          borderColor: 'rgba(232,93,38,.5)',
+          borderWidth: 1,
+          borderRadius: 4,
+          barPercentage: 0.45
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 14, padding: 14 } },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: '#5A6070', maxRotation: 0 }
+        },
+        y: {
+          max: 110,
+          grid: { color: '#EEF1F7' },
+          ticks: {
+            font: { size: 11 }, color: '#5A6070',
+            callback: v => v + '%'
+          }
+        }
+      },
+      animation: { duration: 900, easing: 'easeInOutQuart' }
+    }
+  });
+}
+
+// ── Animate bars & OKR fills on load ──────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w;
+    });
+    document.querySelectorAll('.okr-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w;
+      if (el.dataset.color) el.style.background = el.dataset.color;
+    });
+    updateRowCount();
+  }, 150);
+});
+
+// ── Table filter + search ─────────────────────────────────────
+function filterTable() {
+  const q   = document.getElementById('metricSearch').value.toLowerCase();
+  const fn  = document.getElementById('functionFilter').value.toLowerCase();
+  const st  = document.getElementById('statusFilter').value.toLowerCase();
+  const rows = document.querySelectorAll('#metricsTable tbody tr');
+  let vis = 0;
+  rows.forEach(row => {
+    const text   = row.textContent.toLowerCase();
+    const rowFn  = (row.dataset.fn  || '').toLowerCase();
+    const rowSt  = (row.dataset.status || '').toLowerCase();
+    const show = (!q || text.includes(q)) && (!fn || rowFn === fn) && (!st || rowSt.includes(st));
+    row.classList.toggle('hidden-row', !show);
+    if (show) vis++;
+  });
+  document.getElementById('rowCount').textContent = vis + ' of 33 metrics';
+}
+
+function updateRowCount() {
+  document.getElementById('rowCount').textContent = '33 of 33 metrics';
+}
+
+// ── Simple table sort ─────────────────────────────────────────
+let sortDir = {};
+function sortTable(col) {
+  const tbody = document.querySelector('#metricsTable tbody');
+  const rows  = Array.from(tbody.querySelectorAll('tr'));
+  sortDir[col] = !sortDir[col];
+  rows.sort((a, b) => {
+    const av = a.cells[col].textContent.trim().toLowerCase();
+    const bv = b.cells[col].textContent.trim().toLowerCase();
+    return sortDir[col] ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+</script>
+</body>
+</html>
